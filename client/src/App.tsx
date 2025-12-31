@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import './App.css';
 import RiskMap from './components/RiskMap';
 import io from 'socket.io-client';
-import { GameState } from './types';
+import type { GameState } from './types';
 
 const SERVER_URL = import.meta.env.VITE_SERVER_URL || (import.meta.env.PROD ? '/' : 'http://localhost:3001');
 const socket = io(SERVER_URL);
@@ -109,6 +109,8 @@ function App() {
     setSourceTerritory(null);
     setSelectedTerritory(null);
   };
+
+  const myPlayer = gameState && gameState.players[myId];
 
   const myPlayer = gameState && gameState.players[myId];
 

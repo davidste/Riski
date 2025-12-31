@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { mapData } from '../data/mapData';
-import { GameState } from '../types';
+import type { GameState } from '../types';
 
 interface RiskMapProps {
   gameState: GameState;
