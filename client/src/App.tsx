@@ -4,7 +4,8 @@ import RiskMap from './components/RiskMap';
 import io from 'socket.io-client';
 import { GameState } from './types';
 
-const socket = io('http://localhost:3001');
+const SERVER_URL = import.meta.env.VITE_SERVER_URL || (import.meta.env.PROD ? '/' : 'http://localhost:3001');
+const socket = io(SERVER_URL);
 
 function App() {
   const [gameState, setGameState] = useState<GameState | null>(null);

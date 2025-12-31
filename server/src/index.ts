@@ -3,6 +3,7 @@ import { createServer } from 'http';
 import { Server, Socket } from 'socket.io';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import path from 'path';
 import { RiskGame } from './game/RiskGame';
 import { AIController } from './game/AIController';
 
@@ -19,6 +20,15 @@ const io = new Server(httpServer, {
 
 app.use(cors());
 app.use(express.json());
+
+// Serve static files from client/dist if in production
+if (process.env.NODE_ENV === 'production') {
+  app.use(express.static(path.join(__dirname, '../../client/dist')));
+  
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '../../client/dist/index.html'));
+  });
+}
 
 const PORT = process.env.PORT || 3001;
 
@@ -92,7 +102,15 @@ io.on('connection', (socket: Socket) => {
     const playerId = players[socket.id];
     if (game.reinforce(playerId, territoryId, amount)) {
         io.emit('game_update', game.state);
-        checkAiTurn(); // Check if phase changed to something AI needs to handle (unlikely here but safe)
+        checkAiTurn();
+    }
+  });
+
+  socket.on('action_trade', (cardIds: string[]) => {
+    if (!game) return;
+    const playerId = players[socket.id];
+    if (game.tradeCards(playerId, cardIds)) {
+        io.emit('game_update', game.state);
     }
   });
 
