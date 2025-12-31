@@ -104,6 +104,7 @@ function App() {
     socket.emit('action_trade', cardIds);
   };
 
+  const handleEndPhase = () => {
     socket.emit('action_end_phase');
     setSourceTerritory(null);
     setSelectedTerritory(null);
