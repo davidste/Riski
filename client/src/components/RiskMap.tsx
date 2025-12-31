@@ -12,7 +12,7 @@ const RiskMap: React.FC<RiskMapProps> = ({ gameState, onTerritoryClick, selected
   const [hoveredTerritory, setHoveredTerritory] = useState<string | null>(null);
 
   // Draw connections between neighbors
-  const connections: JSX.Element[] = [];
+  const connections: React.ReactElement[] = [];
   const processedPairs = new Set<string>();
 
   mapData.forEach(t1 => {
