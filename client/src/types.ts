@@ -3,11 +3,17 @@ export interface TerritoryState {
   troops: number;
 }
 
+export interface Card {
+  id: string;
+  type: 'INFANTRY' | 'CAVALRY' | 'ARTILLERY' | 'WILD';
+  territoryId?: string;
+}
+
 export interface PlayerState {
   id: string;
   name: string;
   color: string;
-  cards: any[];
+  cards: Card[];
   isAlive: boolean;
   isAi: boolean;
 }
@@ -21,4 +27,5 @@ export interface GameState {
   currentPlayerIndex: number;
   currentPhase: GamePhase;
   unplacedTroops: number;
+  conqueredThisTurn: boolean;
 }

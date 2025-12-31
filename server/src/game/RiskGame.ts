@@ -1,3 +1,11 @@
+export type CardType = 'INFANTRY' | 'CAVALRY' | 'ARTILLERY' | 'WILD';
+
+export interface Card {
+  id: string;
+  type: CardType;
+  territoryId?: string; // Optional territory bonus
+}
+
 export interface TerritoryState {
   owner: string | null;
   troops: number;
@@ -7,7 +15,7 @@ export interface PlayerState {
   id: string;
   name: string;
   color: string;
-  cards: any[]; // To be implemented
+  cards: Card[];
   isAlive: boolean;
   isAi: boolean;
 }
@@ -20,11 +28,11 @@ export interface GameState {
   playerOrder: string[];
   currentPlayerIndex: number;
   currentPhase: GamePhase;
-  unplacedTroops: number; // For reinforce phase
+  unplacedTroops: number;
+  conqueredThisTurn: boolean; // Track for card awarding
 }
 
 // Simple map adjacency graph (id -> neighbors)
-// In a real app this would be loaded from shared config
 export const ADJACENCY: Record<string, string[]> = {
   "t1": ["t2", "t3"],
   "t2": ["t1", "t3"],
@@ -36,9 +44,33 @@ export const ADJACENCY: Record<string, string[]> = {
 
 export class RiskGame {
   state: GameState;
+  private deck: Card[] = [];
 
   constructor(playerIds: string[]) {
     this.state = this.initializeGame(playerIds);
+    this.initializeDeck();
+  }
+
+  private initializeDeck() {
+    const types: CardType[] = ['INFANTRY', 'CAVALRY', 'ARTILLERY'];
+    Object.keys(ADJACENCY).forEach((tid, i) => {
+      this.deck.push({
+        id: `card_${i}`,
+        type: types[i % 3],
+        territoryId: tid
+      });
+    });
+    // Add Wild cards
+    this.deck.push({ id: 'wild_1', type: 'WILD' });
+    this.deck.push({ id: 'wild_2', type: 'WILD' });
+    this.shuffleDeck();
+  }
+
+  private shuffleDeck() {
+    for (let i = this.deck.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [this.deck[i], this.deck[j]] = [this.deck[j], this.deck[i]];
+    }
   }
 
   private initializeGame(playerIds: string[]): GameState {
@@ -56,15 +88,13 @@ export class RiskGame {
       };
     });
 
-    // Initialize territories (random assignment for simplicity or empty)
     const territories: Record<string, TerritoryState> = {};
     const territoryIds = Object.keys(ADJACENCY);
     
-    // Random distribution for setup
     territoryIds.forEach((tid, i) => {
       territories[tid] = {
         owner: playerIds[i % playerIds.length],
-        troops: 3 // Initial troops
+        troops: 3
       };
     });
 
@@ -73,8 +103,9 @@ export class RiskGame {
       players,
       playerOrder: playerIds,
       currentPlayerIndex: 0,
-      currentPhase: 'REINFORCE', // Skip setup for now for speed
-      unplacedTroops: 3 // Fixed start reinforcement
+      currentPhase: 'REINFORCE',
+      unplacedTroops: 3,
+      conqueredThisTurn: false
     };
   }
 
@@ -93,9 +124,56 @@ export class RiskGame {
     territory.troops += amount;
     this.state.unplacedTroops -= amount;
 
+    // Auto advance if out of troops? No, user might want to trade cards first or wait
     if (this.state.unplacedTroops === 0) {
+      // Client usually triggers end phase, but we can auto-switch to ATTACK if we want
+      // For now, let's keep it manual or implicit in UI
       this.state.currentPhase = 'ATTACK';
     }
+    return true;
+  }
+
+  tradeCards(playerId: string, cardIds: string[]): boolean {
+    if (playerId !== this.getCurrentPlayerId()) return false;
+    if (this.state.currentPhase !== 'REINFORCE') return false;
+    
+    const player = this.state.players[playerId];
+    const cardsToTrade = player.cards.filter(c => cardIds.includes(c.id));
+    
+    if (cardsToTrade.length !== 3) return false;
+
+    // Validate set
+    const types = cardsToTrade.map(c => c.type);
+    const isThreeSame = types[0] === types[1] && types[1] === types[2];
+    const isThreeUnique = types.includes('INFANTRY') && types.includes('CAVALRY') && types.includes('ARTILLERY');
+    const hasWild = types.includes('WILD');
+    
+    // Simplistic wild logic: if wild present, assume valid triad for now (or strictly check)
+    // Real rules: Wild matches any. So 2 SAME + Wild = 3 SAME. 
+    // For simplicity: any 3 cards with a WILD are valid, or standard sets.
+    
+    let isValid = isThreeSame || isThreeUnique || hasWild;
+
+    if (!isValid) return false;
+
+    // Remove cards from player
+    player.cards = player.cards.filter(c => !cardIds.includes(c.id));
+    
+    // Return to deck
+    this.deck.push(...cardsToTrade);
+    this.shuffleDeck();
+
+    // Give troops (Fixed bonus for simplicity)
+    const bonus = 5; 
+    this.state.unplacedTroops += bonus;
+    
+    // Territory bonus (if you own the territory on the card)
+    cardsToTrade.forEach(c => {
+      if (c.territoryId && this.state.territories[c.territoryId]?.owner === playerId) {
+        this.state.territories[c.territoryId].troops += 2; // Immediate +2 on territory
+      }
+    });
+
     return true;
   }
 
@@ -111,8 +189,6 @@ export class RiskGame {
     if (fromT.troops < 2) return { success: false };
     if (!ADJACENCY[fromId].includes(toId)) return { success: false };
 
-    // Simple Dice Logic (Blitz: 1 vs 1 roll)
-    // Real Risk has up to 3 atk dice vs 2 def dice
     const attackerDice = [Math.ceil(Math.random() * 6)];
     const defenderDice = [Math.ceil(Math.random() * 6)];
 
@@ -121,17 +197,15 @@ export class RiskGame {
     if (attackerDice[0] > defenderDice[0]) {
       toT.troops -= 1;
       if (toT.troops <= 0) {
-        // Conquered
         toT.owner = playerId;
-        toT.troops = 1; // Move 1 troop in
+        toT.troops = 1;
         fromT.troops -= 1;
         conquered = true;
+        this.state.conqueredThisTurn = true;
       }
     } else {
       fromT.troops -= 1;
     }
-
-    // Check if player died (later)
 
     return { success: true, diceResults: { attacker: attackerDice, defender: defenderDice }, conquered };
   }
@@ -152,8 +226,7 @@ export class RiskGame {
     const toT = this.state.territories[toId];
 
     if (fromT.owner !== playerId || toT.owner !== playerId) return false;
-    if (fromT.troops <= amount) return false; // Must leave 1 behind
-    // Path checking (BFS) needed here, using simple adjacency for now
+    if (fromT.troops <= amount) return false;
     if (!ADJACENCY[fromId].includes(toId)) return false; 
 
     fromT.troops -= amount;
@@ -171,8 +244,20 @@ export class RiskGame {
   }
 
   private endTurn() {
+    // Award card if conquered
+    if (this.state.conqueredThisTurn) {
+        const playerId = this.getCurrentPlayerId();
+        if (this.deck.length > 0) {
+            const card = this.deck.shift();
+            if (card) {
+                this.state.players[playerId].cards.push(card);
+            }
+        }
+    }
+
     this.state.currentPlayerIndex = (this.state.currentPlayerIndex + 1) % this.state.playerOrder.length;
     this.state.currentPhase = 'REINFORCE';
+    this.state.conqueredThisTurn = false;
     this.calculateReinforcements();
   }
 
@@ -184,6 +269,5 @@ export class RiskGame {
     });
     
     this.state.unplacedTroops = Math.max(3, Math.floor(territoryCount / 3));
-    // Add continent bonuses here
   }
 }

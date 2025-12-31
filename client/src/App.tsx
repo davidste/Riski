@@ -90,7 +90,19 @@ function App() {
     }
   };
 
-  const handleEndPhase = () => {
+  const handleTrade = () => {
+    // Simple auto-trade for now (finds first valid set)
+    if (!gameState) return;
+    const myCards = gameState.players[myId].cards;
+    
+    // Naive checker:
+    // 1. Check for 3 same
+    // 2. Check for 3 different
+    // This is complex for UI, sending all card Ids for server to validate is easier
+    const cardIds = myCards.map(c => c.id).slice(0, 3); // Just try first 3 for demo
+    socket.emit('action_trade', cardIds);
+  };
+
     socket.emit('action_end_phase');
     setSourceTerritory(null);
     setSelectedTerritory(null);
@@ -130,6 +142,9 @@ function App() {
           {isMyTurn && gameState.currentPhase === 'REINFORCE' && (
               <span>Troops to place: {gameState.unplacedTroops}</span>
           )}
+          {myPlayer && (
+              <span style={{marginLeft: 10, fontSize: '0.8em'}}>Cards: {myPlayer.cards.length}</span>
+          )}
         </div>
       </header>
       
@@ -152,7 +167,12 @@ function App() {
               
               <div className="actions">
                  {isMyTurn && gameState.currentPhase === 'REINFORCE' && (
-                     <button onClick={handleReinforce}>Reinforce (+1)</button>
+                     <>
+                        <button onClick={handleReinforce}>Reinforce (+1)</button>
+                        {myPlayer && myPlayer.cards.length >= 3 && (
+                            <button onClick={handleTrade} style={{marginLeft: 5, background: '#88f'}}>Trade Cards (First 3)</button>
+                        )}
+                     </>
                  )}
                  {isMyTurn && gameState.currentPhase === 'ATTACK' && sourceTerritory && (
                      <p>Click target to attack!</p>
