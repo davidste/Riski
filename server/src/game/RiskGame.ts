@@ -36,10 +36,11 @@ export interface GameState {
 export const ADJACENCY: Record<string, string[]> = {
   "t1": ["t2", "t3"],
   "t2": ["t1", "t3"],
-  "t3": ["t1", "t2", "t4"],
-  "t4": ["t3", "t5", "t6"],
+  "t3": ["t1", "t2", "t4", "t3b"],
+  "t3b": ["t3", "t4", "t2", "t6"],
+  "t4": ["t3", "t5", "t6", "t3b"],
   "t5": ["t4", "t6"],
-  "t6": ["t4", "t5"]
+  "t6": ["t4", "t5", "t3b"]
 };
 
 export class RiskGame {
