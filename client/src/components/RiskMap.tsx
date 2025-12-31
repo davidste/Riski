@@ -12,8 +12,8 @@ const RiskMap: React.FC<RiskMapProps> = ({ gameState, onTerritoryClick, selected
   const [hoveredTerritory, setHoveredTerritory] = useState<string | null>(null);
 
   return (
-    <div className="risk-map-container" style={{ width: '100%', height: 'auto', border: '1px solid #333' }}>
-      <svg viewBox="0 0 1000 600" style={{ width: '100%', height: '100%' }}>
+    <div className="risk-map-container" style={{ width: '100%', height: 'auto', border: '1px solid #333', minHeight: '300px' }}>
+      <svg viewBox="0 0 1000 600" style={{ width: '100%', height: '100%', display: 'block' }}>
         {mapData.map((territory) => {
           const state = gameState.territories[territory.id];
           // Check if owner exists in players (it should)

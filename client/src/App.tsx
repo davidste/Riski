@@ -4,8 +4,10 @@ import RiskMap from './components/RiskMap';
 import io from 'socket.io-client';
 import type { GameState } from './types';
 
-const SERVER_URL = import.meta.env.VITE_SERVER_URL || (import.meta.env.PROD ? '/' : 'http://localhost:3001');
-const socket = io(SERVER_URL);
+const SERVER_URL = import.meta.env.VITE_SERVER_URL || (import.meta.env.PROD ? window.location.origin : 'http://localhost:3001');
+const socket = io(SERVER_URL, {
+  transports: ['websocket', 'polling']
+});
 
 function App() {
   const [gameState, setGameState] = useState<GameState | null>(null);
