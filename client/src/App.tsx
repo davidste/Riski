@@ -110,6 +110,8 @@ function App() {
     setSelectedTerritory(null);
   };
 
+  const myPlayer = gameState && gameState.players[myId];
+
   const addAI = () => {
     socket.emit('add_ai');
   };
