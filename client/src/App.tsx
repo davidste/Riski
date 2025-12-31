@@ -112,8 +112,6 @@ function App() {
 
   const myPlayer = gameState && gameState.players[myId];
 
-  const myPlayer = gameState && gameState.players[myId];
-
   const addAI = () => {
     socket.emit('add_ai');
   };
